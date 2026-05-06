@@ -189,6 +189,15 @@ function setProgress(value, message) {
   } catch (_) {}
 }
 
+function withTimeout(promise, timeoutMs, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]);
+}
+
 function currency(value, sign = true) {
   const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
   const number = Number(value || 0);
@@ -279,9 +288,9 @@ function clearLeaderboardCache(playerId) {
 async function initFacebookInstant() {
   setProgress(18, 'Checking Facebook Instant Games shell...');
   await new Promise((resolve) => setTimeout(resolve, 350));
-  if (!window.FBInstant) return false;
+  if (!window.FBInstant || typeof window.FBInstant.initializeAsync !== 'function') return false;
   try {
-    await window.FBInstant.initializeAsync();
+    await withTimeout(window.FBInstant.initializeAsync(), 2500, 'Facebook Instant initialization timed out');
     setProgress(46, 'Facebook shell ready...');
     const player = window.FBInstant.player;
     state.fb.available = true;
@@ -299,7 +308,9 @@ async function initFacebookInstant() {
     };
     savePlayer(merged);
     clearLeaderboardCache(merged.providerUserId);
-    await window.FBInstant.startGameAsync();
+    if (typeof window.FBInstant.startGameAsync === 'function') {
+      await withTimeout(window.FBInstant.startGameAsync(), 2500, 'Facebook Instant start timed out');
+    }
     return true;
   } catch (error) {
     console.warn('FBInstant init failed, falling back to PWA/local mode', error);
