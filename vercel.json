@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
+  "outputDirectory": "stock-lens-market-mayhem/public",
   "functions": {
     "api/index.js": {
       "includeFiles": "stock-lens-market-mayhem/public/**",
