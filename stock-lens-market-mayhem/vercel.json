@@ -4,6 +4,7 @@
   "public": true,
   "functions": {
     "api/index.js": {
+      "includeFiles": "public/**",
       "maxDuration": 60
     }
   },

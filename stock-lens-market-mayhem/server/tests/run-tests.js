@@ -150,6 +150,28 @@ async function testApiHardening() {
   }
 }
 
+async function testStaticAssets() {
+  const port = 11450 + Math.floor(Math.random() * 800);
+  const serverProcess = await startServerForApiTests(port);
+  try {
+    const cssResponse = await fetch(`http://127.0.0.1:${port}/styles.css`);
+    assert.equal(cssResponse.status, 200, 'styles.css should be served');
+    assert.match(cssResponse.headers.get('content-type') || '', /text\/css/, 'styles.css should have CSS content type');
+    assert.match(await cssResponse.text(), /entry-screen|app-shell/, 'styles.css should contain app styles');
+
+    const jsResponse = await fetch(`http://127.0.0.1:${port}/app.js`);
+    assert.equal(jsResponse.status, 200, 'app.js should be served');
+    assert.match(jsResponse.headers.get('content-type') || '', /javascript/, 'app.js should have JavaScript content type');
+    assert.match(await jsResponse.text(), /boot\(\)/, 'app.js should contain app boot code');
+
+    const iconResponse = await fetch(`http://127.0.0.1:${port}/assets/icon.svg`);
+    assert.equal(iconResponse.status, 200, 'icon.svg should be served');
+    assert.match(iconResponse.headers.get('content-type') || '', /image\/svg\+xml/, 'icon.svg should have SVG content type');
+  } finally {
+    await stopServerForApiTests(serverProcess);
+  }
+}
+
 async function run() {
   await testMarketData();
   await testOneTradePerDay();
@@ -157,6 +179,7 @@ async function run() {
   await testStockTrumps();
   await testQuotesApiValidation();
   await testApiHardening();
+  await testStaticAssets();
   console.log('All Stock-LENS tests passed.');
 }
 
