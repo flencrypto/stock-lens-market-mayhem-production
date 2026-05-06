@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mr.FLEN Stock-LENS icon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#05111f"/><stop offset="0.5" stop-color="#071c32"/><stop offset="1" stop-color="#02050a"/></linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1"><stop offset="0" stop-color="#22f3ff"/><stop offset="1" stop-color="#7dffef"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="226" r="132" fill="none" stroke="url(#cyan)" stroke-width="24" filter="url(#glow)"/>
+  <path d="M104 318c48-40 85-62 152-62s104 22 152 62" fill="none" stroke="#e9fbff" stroke-width="24" stroke-linecap="round" opacity=".95"/>
+  <path d="M137 212h78l41 64 41-64h78" fill="none" stroke="#11e279" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="410" text-anchor="middle" fill="#e9fbff" font-family="Arial Black, Arial, sans-serif" font-size="54">FLEN</text>
+  <text x="256" y="458" text-anchor="middle" fill="#22f3ff" font-family="Arial, sans-serif" font-size="34" letter-spacing="3">STOCK-LENS</text>
+</svg>

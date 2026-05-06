@@ -1,0 +1,34 @@
+{
+  "name": "stock-lens-market-mayhem",
+  "version": "1.0.0",
+  "description": "Mr.FLEN Stock-LENS: turn-based fantasy stock market game with Facebook Instant Games, PWA and leaderboard support.",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node -e \"process.env.NODE_ENV='development'; require('./server/server.js')\"",
+    "test": "node server/tests/run-tests.js",
+    "reset:data": "node scripts/reset-data.js",
+    "build:instant": "python3 scripts/build_instant_zip.py",
+    "desktop": "electron desktop/main.js",
+    "desktop:url": "electron desktop/main.js https://your-domain.example",
+    "native:sync": "cap sync",
+    "native:add:android": "cap add android",
+    "native:add:ios": "cap add ios",
+    "native:open:android": "cap open android",
+    "native:open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "electron": "^31.7.7",
+    "typescript": "^6.0.3"
+  }
+}

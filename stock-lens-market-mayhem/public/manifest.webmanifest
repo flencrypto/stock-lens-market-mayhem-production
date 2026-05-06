@@ -1,0 +1,14 @@
+{
+  "name": "Mr.FLEN Stock-LENS: Market Mayhem",
+  "short_name": "Stock-LENS",
+  "description": "Turn-based fantasy market game. Start with $1,000. One trade per day. Climb the leaderboard.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050b14",
+  "theme_color": "#00e5ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

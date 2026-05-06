@@ -1,0 +1,44 @@
+services:
+  stocklens:
+    image: node:20-alpine
+    working_dir: /app
+    command: node server/server.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      MARKET_PROVIDER: ${MARKET_PROVIDER:-demo}
+      QUOTE_CACHE_SECONDS: ${QUOTE_CACHE_SECONDS:-60}
+      PUBLIC_BASE_URL: https://${DOMAIN}
+      FACEBOOK_GROUP_URL: ${FACEBOOK_GROUP_URL:-https://www.facebook.com/groups/}
+      CORS_ALLOW_ORIGIN: https://${DOMAIN}
+      APP_NAME: ${APP_NAME:-Mr.FLEN Stock-LENS}
+      STARTING_BALANCE: ${STARTING_BALANCE:-1000}
+      DAILY_TRADE_LIMIT: ${DAILY_TRADE_LIMIT:-1}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-stocklens_session}
+      MARKET_DATA_BASE_URL: ${MARKET_DATA_BASE_URL:-}
+      MARKET_DATA_API_KEY: ${MARKET_DATA_API_KEY:-}
+    volumes:
+      - ./:/app
+      - stocklens_data:/app/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      EMAIL: ${EMAIL:-admin@example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - stocklens
+
+volumes:
+  stocklens_data:
+  caddy_data:
+  caddy_config:

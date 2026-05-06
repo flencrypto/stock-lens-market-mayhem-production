@@ -1,0 +1,14 @@
+services:
+  stocklens:
+    image: node:20-alpine
+    working_dir: /app
+    command: node server/server.js
+    ports:
+      - "8787:8787"
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      MARKET_PROVIDER: demo
+      PUBLIC_BASE_URL: http://localhost:8787
+    volumes:
+      - ./:/app
