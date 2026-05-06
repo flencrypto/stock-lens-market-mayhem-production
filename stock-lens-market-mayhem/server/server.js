@@ -83,6 +83,7 @@ function getClientConfig() {
     dailyTradeLimit: config.dailyTradeLimit,
     marketProvider: config.marketProvider,
     quoteCacheSeconds: config.quoteCacheSeconds,
+    facebookAppId: config.facebookAppId,
     facebookGroupUrl: config.facebookGroupUrl,
     publicBaseUrl: config.publicBaseUrl,
     disclaimer: 'Virtual trading game only. No real-money trading, brokerage service, investment advice, or financial return is provided.'
@@ -279,14 +280,26 @@ function handleStatic(_req, res, parsed) {
   });
 }
 
-const server = http.createServer((req, res) => {
+function handleRequest(req, res) {
   const parsed = url.parse(req.url, true);
   const pathname = parsed.pathname || '/';
   if (pathname.startsWith('/api/')) return handleApi(req, res, parsed);
   return handleStatic(req, res, parsed);
-});
+}
 
-server.listen(config.port, () => {
-  console.log(`${config.appName} running on http://localhost:${config.port}`);
-  console.log(`Market provider: ${config.marketProvider}`);
-});
+function createServer() {
+  return http.createServer(handleRequest);
+}
+
+if (require.main === module) {
+  const server = createServer();
+  server.listen(config.port, () => {
+    console.log(`${config.appName} running on http://localhost:${config.port}`);
+    console.log(`Market provider: ${config.marketProvider}`);
+  });
+}
+
+module.exports = {
+  handleRequest,
+  createServer
+};

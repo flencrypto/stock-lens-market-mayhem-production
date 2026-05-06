@@ -244,6 +244,7 @@ async function leaderboard(data, leagueId = DEFAULT_LEAGUE_ID) {
   for (const member of members) {
     const user = data.users.find((item) => item.id === member.userId);
     if (!user) continue;
+    if (!String(user.provider || '').startsWith('facebook')) continue;
     const metrics = await userMetrics(data, user.id, leagueId);
     rows.push({
       userId: user.id,

@@ -25,6 +25,7 @@ const config = {
   marketDataBaseUrl: process.env.MARKET_DATA_BASE_URL || '',
   marketDataApiKey: process.env.MARKET_DATA_API_KEY || '',
   publicBaseUrl: process.env.PUBLIC_BASE_URL || 'http://localhost:8787',
+  facebookAppId: process.env.FACEBOOK_APP_ID || '',
   facebookGroupUrl: process.env.FACEBOOK_GROUP_URL || 'https://www.facebook.com/groups/',
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'stocklens_session',
   corsAllowOrigin: process.env.CORS_ALLOW_ORIGIN || '*'

@@ -3,7 +3,8 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 const STORAGE_KEYS = {
   player: 'stocklens_player_v1',
-  offline: 'stocklens_offline_state_v1'
+  offline: 'stocklens_offline_state_v1',
+  leaderboardCache: 'stocklens_leaderboard_cache_v1'
 };
 
 const LOCAL_INSTRUMENTS = [
@@ -39,15 +40,63 @@ const TRUMP_STATS = [
   { key: 'risk', label: 'Risk Rating' }
 ];
 
+const ROUTE_PATHS = {
+  dashboard: '/',
+  trade: '/trade',
+  leaderboard: '/leaderboard',
+  trumps: '/trumps',
+  profile: '/profile'
+};
+
+function routeFromLocation(locationLike = window.location) {
+  const pathname = (locationLike.pathname || '/').replace(/\/+$/, '') || '/';
+  if (pathname === '/' || pathname === '/dashboard') return 'dashboard';
+  if (pathname === '/trade') return 'trade';
+  if (pathname === '/leaderboard') return 'leaderboard';
+  if (pathname === '/trumps') return 'trumps';
+  if (pathname === '/profile') return 'profile';
+  return 'dashboard';
+}
+
+function syncRouteToLocation(replace = false) {
+  const targetPath = ROUTE_PATHS[state.route] || ROUTE_PATHS.dashboard;
+  const currentPath = window.location.pathname || '/';
+  if (currentPath === targetPath) return;
+  const method = replace ? 'replaceState' : 'pushState';
+  window.history[method]({ route: state.route }, '', targetPath);
+}
+
+function handleLaunchParams() {
+  const params = new URLSearchParams(window.location.search);
+  const launchInstrument = params.get('instrument');
+  const sharedText = params.get('share-text');
+  const sharedTitle = params.get('share-title');
+  const sharedUrl = params.get('share-url');
+
+  state.route = routeFromLocation();
+
+  if (launchInstrument && state.instruments.some((instrument) => instrument.id === launchInstrument)) {
+    state.selectedInstrumentId = launchInstrument;
+  }
+
+  if (sharedText || sharedTitle || sharedUrl) {
+    state.route = 'profile';
+    window.setTimeout(() => {
+      toast('Shared content received in the app.');
+    }, 400);
+  }
+}
+
 const state = {
-  route: 'dashboard',
+  route: routeFromLocation(),
   ready: false,
-  fb: { available: false, playerId: '', playerName: '', avatarUrl: '' },
+  fb: { available: false, playerId: '', playerName: '', avatarUrl: '', sdkReady: false, mode: 'pwa' },
   offlineMode: false,
   config: {
     appName: 'Mr.FLEN Stock-LENS',
     startingBalance: 1000,
     dailyTradeLimit: 1,
+    facebookAppId: '',
     facebookGroupUrl: 'https://www.facebook.com/groups/',
     disclaimer: 'Virtual trading game only. No real-money trading, brokerage service, investment advice, or financial return is provided.'
   },
@@ -129,6 +178,40 @@ function savePlayer(player) {
   localStorage.setItem(STORAGE_KEYS.player, JSON.stringify(player));
 }
 
+function isAuthenticatedFacebookPlayer(player = getPlayer()) {
+  return String(player?.provider || '').startsWith('facebook') && Boolean(player?.providerUserId);
+}
+
+function readLeaderboardCache() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEYS.leaderboardCache) || 'null');
+}
+
+function writeLeaderboardCache(player, leaderboard, challengeLeaderboard) {
+  if (!isAuthenticatedFacebookPlayer(player)) return;
+  localStorage.setItem(STORAGE_KEYS.leaderboardCache, JSON.stringify({
+    playerId: player.providerUserId,
+    leaderboard: leaderboard || [],
+    challengeLeaderboard: challengeLeaderboard || [],
+    cachedAt: new Date().toISOString()
+  }));
+}
+
+function applyCachedLeaderboard(player = getPlayer()) {
+  const cache = readLeaderboardCache();
+  if (!cache || cache.playerId !== player.providerUserId) return false;
+  state.leaderboard = cache.leaderboard || [];
+  state.challengeLeaderboard = cache.challengeLeaderboard || [];
+  return true;
+}
+
+function clearLeaderboardCache(playerId) {
+  const cache = readLeaderboardCache();
+  if (!cache) return;
+  if (!playerId || cache.playerId === playerId) {
+    localStorage.removeItem(STORAGE_KEYS.leaderboardCache);
+  }
+}
+
 async function initFacebookInstant() {
   setProgress(18, 'Checking Facebook Instant Games shell...');
   await new Promise((resolve) => setTimeout(resolve, 350));
@@ -141,6 +224,7 @@ async function initFacebookInstant() {
     state.fb.playerId = player.getID ? player.getID() : '';
     state.fb.playerName = player.getName ? player.getName() : '';
     state.fb.avatarUrl = player.getPhoto ? player.getPhoto() : '';
+    state.fb.mode = 'facebook-instant';
     const local = getPlayer();
     const merged = {
       ...local,
@@ -150,11 +234,127 @@ async function initFacebookInstant() {
       avatarUrl: state.fb.avatarUrl || local.avatarUrl
     };
     savePlayer(merged);
+    clearLeaderboardCache(merged.providerUserId);
     await window.FBInstant.startGameAsync();
     return true;
   } catch (error) {
     console.warn('FBInstant init failed, falling back to PWA/local mode', error);
     return false;
+  }
+}
+
+function loadFacebookSdk(appId) {
+  if (!appId) return Promise.resolve(false);
+  if (window.FB && state.fb.sdkReady) return Promise.resolve(true);
+
+  return new Promise((resolve, reject) => {
+    const finishInit = () => {
+      try {
+        window.FB.init({
+          appId,
+          cookie: true,
+          xfbml: false,
+          version: 'v22.0'
+        });
+        state.fb.sdkReady = true;
+        resolve(true);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    if (window.FB) {
+      finishInit();
+      return;
+    }
+
+    window.fbAsyncInit = finishInit;
+
+    if (document.getElementById('facebook-jssdk')) return;
+
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.async = true;
+    script.defer = true;
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.onerror = () => reject(new Error('Facebook SDK failed to load'));
+    document.head.appendChild(script);
+  });
+}
+
+function getFacebookLoginStatus() {
+  return new Promise((resolve) => {
+    window.FB.getLoginStatus((response) => resolve(response));
+  });
+}
+
+function getFacebookProfile() {
+  return new Promise((resolve, reject) => {
+    window.FB.api('/me', { fields: 'id,name,picture.width(128).height(128)' }, (response) => {
+      if (!response || response.error) {
+        reject(new Error(response?.error?.message || 'Facebook profile request failed'));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+async function syncFacebookWebPlayer() {
+  const profile = await getFacebookProfile();
+  const local = getPlayer();
+  state.fb.available = true;
+  state.fb.playerId = profile.id || local.providerUserId;
+  state.fb.playerName = profile.name || local.displayName;
+  state.fb.avatarUrl = profile.picture?.data?.url || local.avatarUrl || '';
+  state.fb.mode = 'facebook-web';
+
+  savePlayer({
+    ...local,
+    provider: 'facebook-web',
+    providerUserId: state.fb.playerId,
+    displayName: state.fb.playerName,
+    avatarUrl: state.fb.avatarUrl
+  });
+  clearLeaderboardCache(state.fb.playerId);
+}
+
+async function initFacebookWebLogin() {
+  if (state.fb.available || !state.config.facebookAppId) return false;
+  try {
+    await loadFacebookSdk(state.config.facebookAppId);
+    const status = await getFacebookLoginStatus();
+    if (status.status !== 'connected') return false;
+    await syncFacebookWebPlayer();
+    return true;
+  } catch (error) {
+    console.warn('Facebook web login init failed', error);
+    return false;
+  }
+}
+
+async function signInWithFacebook() {
+  if (!state.config.facebookAppId) {
+    toast('Set FACEBOOK_APP_ID to enable Facebook sign-in.');
+    return;
+  }
+
+  try {
+    await loadFacebookSdk(state.config.facebookAppId);
+    const response = await new Promise((resolve) => {
+      window.FB.login((loginResponse) => resolve(loginResponse), { scope: 'public_profile' });
+    });
+
+    if (!response || !response.authResponse) {
+      throw new Error('Facebook sign-in was cancelled.');
+    }
+
+    await syncFacebookWebPlayer();
+    await loadAppData();
+    render();
+    toast('Signed in with Facebook.');
+  } catch (error) {
+    toast(error.message || 'Facebook sign-in failed.');
   }
 }
 
@@ -352,8 +552,13 @@ async function loadAppData() {
     state.user = payload.user;
     state.instruments = payload.instruments || LOCAL_INSTRUMENTS;
     state.portfolio = payload.portfolio;
-    state.leaderboard = payload.leaderboard || [];
-    state.challengeLeaderboard = payload.challengeLeaderboard || [];
+    const player = getPlayer();
+    const usedCache = applyCachedLeaderboard(player);
+    if (!usedCache) {
+      state.leaderboard = payload.leaderboard || [];
+      state.challengeLeaderboard = payload.challengeLeaderboard || [];
+      writeLeaderboardCache(player, state.leaderboard, state.challengeLeaderboard);
+    }
     state.trumpStats = payload.trumpStats || TRUMP_STATS;
     state.trumpCards = payload.trumpCards || [];
     state.challenges = payload.challenges || [];
@@ -384,9 +589,14 @@ function bindGlobalEvents() {
     const routeButton = event.target.closest('[data-route]');
     if (routeButton) {
       state.route = routeButton.dataset.route;
+      syncRouteToLocation();
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  });
+  window.addEventListener('popstate', () => {
+    state.route = routeFromLocation();
+    render();
   });
   $('#share-button')?.addEventListener('click', shareLeagueCard);
   $('#install-button')?.addEventListener('click', async () => {
@@ -671,8 +881,10 @@ function renderProfile() {
           <input class="input" id="display-name" value="${state.user?.displayName || ''}" />
         </div>
         <button class="primary-button" id="save-name">Save name</button>
+        ${!state.fb.available && state.config.facebookAppId ? '<button class="secondary-button" id="facebook-signin" style="margin-top:10px;">Sign in with Facebook</button>' : ''}
         <button class="secondary-button" id="enable-push" style="margin-top:10px;">Enable trade reminders</button>
         <button class="ghost-button" id="settle-day" style="margin-top:10px;">Run daily settlement</button>
+        ${state.config.facebookAppId ? '<p class="disclaimer">Facebook Login is enabled for the PWA. For public production use, verify Facebook tokens server-side before trusting the identity.</p>' : ''}
       </article>
       <article class="panel">
         <div class="panel-header"><div><h2>Facebook Group Link</h2><p>Keep the banter and weekly leaderboard drops in the group.</p></div></div>
@@ -688,7 +900,10 @@ function bindViewEvents() {
   $$('[data-select-instrument]').forEach((button) => {
     button.addEventListener('click', () => {
       state.selectedInstrumentId = button.dataset.selectInstrument;
-      if (button.dataset.route) state.route = button.dataset.route;
+      if (button.dataset.route) {
+        state.route = button.dataset.route;
+        syncRouteToLocation();
+      }
       render();
     });
   });
@@ -706,6 +921,7 @@ function bindViewEvents() {
   $$('[data-play-stat]').forEach((button) => button.addEventListener('click', () => playStat(button.dataset.challengeId, button.dataset.playStat)));
   $('#download-card')?.addEventListener('click', downloadShareCard);
   $('#save-name')?.addEventListener('click', saveName);
+  $('#facebook-signin')?.addEventListener('click', signInWithFacebook);
   $('#enable-push')?.addEventListener('click', enablePush);
   $('#settle-day')?.addEventListener('click', settleDay);
   $('#copy-group-post')?.addEventListener('click', copyGroupPost);
@@ -721,9 +937,11 @@ async function confirmTrade() {
       const result = await api('/api/trade', { method: 'POST', body });
       state.portfolio = result.after;
       state.leaderboard = result.leaderboard;
+      writeLeaderboardCache(getPlayer(), state.leaderboard, state.challengeLeaderboard);
       toast('Trade confirmed and leaderboard refreshed.');
     }
     state.route = 'dashboard';
+    syncRouteToLocation();
     if (window.FBInstant && window.FBInstant.updateAsync) {
       window.FBInstant.updateAsync({ action: 'CUSTOM', template: 'daily_trade', cta: 'Play', text: 'I made my daily Stock-LENS trade.', data: { route: 'leaderboard' }, strategy: 'IMMEDIATE', notification: 'NO_PUSH' }).catch(() => {});
     }
@@ -976,7 +1194,10 @@ function downloadShareCard() {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    await navigator.serviceWorker.register('/sw.js');
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
   } catch (error) {
     console.warn('SW registration failed', error);
   }
@@ -992,13 +1213,18 @@ window.addEventListener('beforeinstallprompt', (event) => {
 async function boot() {
   setProgress(8, 'Booting Stock-LENS...');
   getPlayer();
+  handleLaunchParams();
   await registerServiceWorker();
   await initFacebookInstant();
   setProgress(76, 'Preparing your $1,000 bankroll...');
   await loadAppData();
+  if (await initFacebookWebLogin()) {
+    await loadAppData();
+  }
   setProgress(100, 'Ready. Charts lie. LENS don’t.');
   await new Promise((resolve) => setTimeout(resolve, 260));
   state.ready = true;
+  syncRouteToLocation(true);
   mountApp();
 }
 

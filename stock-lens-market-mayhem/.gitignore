@@ -7,3 +7,6 @@ data/*.json
 .DS_Store
 dist/*.zip
 *.log
+.netlify/
+.vercel/
+.cache/

@@ -75,13 +75,18 @@ async function testOneTradePerDay() {
 
 async function testPortfolioMetricsAndLeaderboard() {
   const data = emptyData();
-  const user = findOrCreateUser(data, { provider: 'local', providerUserId: 'metric-user', displayName: 'Metric Trader' });
-  await executeTrade(data, user, { instrumentId: 'AAPL', side: 'BUY', notional: 250 });
-  const metrics = await userMetrics(data, user.id);
+  const localUser = findOrCreateUser(data, { provider: 'local', providerUserId: 'metric-user', displayName: 'Metric Trader' });
+  const facebookUser = findOrCreateUser(data, { provider: 'facebook-web', providerUserId: 'fb-metric-user', displayName: 'Facebook Trader' });
+  await executeTrade(data, localUser, { instrumentId: 'AAPL', side: 'BUY', notional: 250 });
+  data.trades = [];
+  await executeTrade(data, facebookUser, { instrumentId: 'AAPL', side: 'BUY', notional: 250 });
+  const metrics = await userMetrics(data, facebookUser.id);
   assert.ok(metrics.portfolioValue > 0, 'portfolio value should calculate');
   assert.equal(metrics.stats.daysTraded, 1, 'days traded should update');
   const board = await leaderboard(data);
+  assert.equal(board.every((row) => row.displayName !== 'Metric Trader'), true, 'local users should not appear on leaderboard');
   assert.equal(board.length, 1);
+  assert.equal(board[0].displayName, 'Facebook Trader');
   assert.equal(board[0].rank, 1);
 }
 

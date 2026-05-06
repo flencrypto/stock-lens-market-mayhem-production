@@ -1,36 +1,19 @@
 // Netlify serverless function wrapper for Stock-LENS API
-// This forwards requests to the Node.js server bundled as a Netlify function
+// This forwards requests to the shared Node request handler.
 
-const http = require('http');
-
-// Cache module instance to avoid re-initialization per request
-let serverHandler = null;
-
-async function getServerHandler() {
-  if (serverHandler) return serverHandler;
-  
-  // Dynamically require the server module only once
-  const module = require('../../server/server.js');
-  return module;
-}
+const { handleRequest } = require('../../server/server.js');
 
 exports.handler = async (event, context) => {
   try {
-    const path = event.path || event.rawPath || '/';
+    const path = (event.path || event.rawPath || '/').replace(/^\/.netlify\/functions\/api/, '') || '/';
     const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
     const headers = event.headers || {};
     const queryString = event.queryStringParameters ? new URLSearchParams(event.queryStringParameters).toString() : '';
     const body = event.body || null;
 
-    // Build the URL to pass to the server
     const url = `${path}${queryString ? '?' + queryString : ''}`;
-
-    // Create a mock request/response for the server handler
     const mockReq = new MockRequest(method, url, headers, body);
     const mockRes = new MockResponse();
-
-    // Import and call the server handler
-    const { default: serverHandler } = require('../../server/server.js');
     
     return new Promise((resolve) => {
       mockRes.onFinish(() => {
@@ -42,8 +25,7 @@ exports.handler = async (event, context) => {
         });
       });
 
-      // Call your server handler
-      serverHandler(mockReq, mockRes);
+      handleRequest(mockReq, mockRes);
     });
   } catch (error) {
     console.error('API handler error:', error);
@@ -95,6 +77,7 @@ class MockResponse {
     this.headers = {};
     this.body = '';
     this.finished = false;
+    this.finishListeners = [];
   }
 
   writeHead(statusCode, headers = {}) {
@@ -119,9 +102,12 @@ class MockResponse {
   }
 
   on(event, callback) {
-    if (event === 'finish' && this.finished) {
+    if (event !== 'finish') return;
+    if (this.finished) {
       callback();
+      return;
     }
+    this.finishListeners.push(callback);
   }
 
   once(event, callback) {
@@ -137,6 +123,9 @@ class MockResponse {
   }
 
   emit(event) {
-    // Mock event emitter
+    if (event !== 'finish') return;
+    for (const callback of this.finishListeners.splice(0)) {
+      callback();
+    }
   }
 }

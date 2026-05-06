@@ -2,21 +2,8 @@
   "version": 2,
   "buildCommand": "npm run build:instant",
   "public": true,
-  "env": [
-    "PORT",
-    "NODE_ENV",
-    "PUBLIC_BASE_URL",
-    "MARKET_PROVIDER",
-    "QUOTE_CACHE_SECONDS",
-    "APP_NAME",
-    "STARTING_BALANCE",
-    "DAILY_TRADE_LIMIT",
-    "FACEBOOK_GROUP_URL",
-    "SESSION_COOKIE_NAME",
-    "CORS_ALLOW_ORIGIN"
-  ],
   "functions": {
-    "server/server.js": {
+    "api/index.js": {
       "runtime": "nodejs18.x",
       "memory": 1024,
       "maxDuration": 60
@@ -25,11 +12,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/server/server.js"
+      "dest": "/api/index.js"
     }
   ],
   "headers": [
