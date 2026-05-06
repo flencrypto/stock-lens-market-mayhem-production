@@ -3,7 +3,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const url = require('url');
 
 const config = require('./src/config');
 const { readData, writeData, findOrCreateUser, DEFAULT_LEAGUE_ID, addAudit } = require('./src/dataStore');
@@ -281,7 +280,11 @@ function handleStatic(_req, res, parsed) {
 }
 
 function handleRequest(req, res) {
-  const parsed = url.parse(req.url, true);
+  const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  const parsed = {
+    pathname: parsedUrl.pathname,
+    query: Object.fromEntries(parsedUrl.searchParams.entries())
+  };
   const pathname = parsed.pathname || '/';
   if (pathname.startsWith('/api/')) return handleApi(req, res, parsed);
   return handleStatic(req, res, parsed);

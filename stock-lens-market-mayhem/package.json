@@ -12,9 +12,9 @@
     "dev": "node -e \"process.env.NODE_ENV='development'; require('./server/server.js')\"",
     "test": "node server/tests/run-tests.js",
     "reset:data": "node scripts/reset-data.js",
-    "build:instant": "python3 scripts/build_instant_zip.py",
+    "build:instant": "node scripts/build-instant-zip.js",
     "desktop": "electron desktop/main.js",
-    "desktop:url": "electron desktop/main.js https://your-domain.example",
+    "desktop:url": "electron desktop/main.js https://stocklens-game.duckdns.org",
     "native:sync": "cap sync",
     "native:add:android": "cap add android",
     "native:add:ios": "cap add ios",
@@ -31,8 +31,5 @@
     "@capacitor/cli": "^6.1.2",
     "electron": "^41.5.0",
     "typescript": "^6.0.3"
-  },
-  "overrides": {
-    "tar": "^7.5.11"
   }
 }

@@ -319,7 +319,114 @@ button {
 
 .compact { padding: 9px 12px; border-radius: 14px; font-size: .9rem; }
 
-.view { min-height: 460px; }
+.view {
+  min-height: max(460px, calc(100dvh - 220px));
+  position: relative;
+  overflow: clip;
+  isolation: isolate;
+}
+
+.view-screen {
+  min-height: inherit;
+  position: relative;
+  will-change: transform, opacity, filter;
+}
+
+.view.is-transitioning {
+  contain: layout paint;
+}
+
+.view.is-transitioning .view-screen {
+  position: absolute;
+  inset: 0;
+}
+
+.view-screen.is-active {
+  z-index: 2;
+}
+
+.view-screen.is-exit {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.view.is-transition-running .view-screen.is-enter {
+  animation: view-enter-forward .52s cubic-bezier(.2, .9, .22, 1) both;
+}
+
+.view.is-transition-running .view-screen.is-exit {
+  animation: view-exit-forward .52s cubic-bezier(.2, .9, .22, 1) both;
+}
+
+.view[data-transition-direction="backward"].is-transition-running .view-screen.is-enter {
+  animation-name: view-enter-backward;
+}
+
+.view[data-transition-direction="backward"].is-transition-running .view-screen.is-exit {
+  animation-name: view-exit-backward;
+}
+
+@keyframes view-enter-forward {
+  0% {
+    opacity: 0;
+    transform: translate3d(10vw, 0, 0) scale(.985);
+    filter: blur(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes view-exit-forward {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: .18;
+    transform: translate3d(-8vw, 0, 0) scale(.972);
+    filter: blur(16px);
+  }
+}
+
+@keyframes view-enter-backward {
+  0% {
+    opacity: 0;
+    transform: translate3d(-10vw, 0, 0) scale(.985);
+    filter: blur(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes view-exit-backward {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: .18;
+    transform: translate3d(8vw, 0, 0) scale(.972);
+    filter: blur(16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-screen,
+  .view.is-transition-running .view-screen.is-enter,
+  .view.is-transition-running .view-screen.is-exit {
+    animation: none;
+    transform: none;
+    filter: none;
+  }
+}
 
 .grid { display: grid; gap: 14px; }
 .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

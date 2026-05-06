@@ -48,6 +48,14 @@ const ROUTE_PATHS = {
   profile: '/profile'
 };
 
+const ROUTE_SEQUENCE = ['dashboard', 'trade', 'leaderboard', 'trumps', 'profile'];
+
+const transitionState = {
+  cleanupTimer: 0,
+  renderToken: 0,
+  renderedRoute: ''
+};
+
 function routeFromLocation(locationLike = window.location) {
   const pathname = (locationLike.pathname || '/').replace(/\/+$/, '') || '/';
   if (pathname === '/' || pathname === '/dashboard') return 'dashboard';
@@ -56,6 +64,22 @@ function routeFromLocation(locationLike = window.location) {
   if (pathname === '/trumps') return 'trumps';
   if (pathname === '/profile') return 'profile';
   return 'dashboard';
+}
+
+function routeDirection(fromRoute, toRoute) {
+  const fromIndex = ROUTE_SEQUENCE.indexOf(fromRoute);
+  const toIndex = ROUTE_SEQUENCE.indexOf(toRoute);
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return 'forward';
+  return toIndex > fromIndex ? 'forward' : 'backward';
+}
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
+function wrapViewMarkup(route, markup, extraClass = '', extraAttributes = '') {
+  const classes = ['view-screen', 'is-active', extraClass].filter(Boolean).join(' ');
+  return `<div class="${classes}" data-route="${route}" ${extraAttributes}>${markup}</div>`;
 }
 
 function syncRouteToLocation(replace = false) {
@@ -627,8 +651,44 @@ function render() {
     trumps: renderTrumps,
     profile: renderProfile
   };
-  view.innerHTML = (routes[state.route] || renderDashboard)();
+  const nextMarkup = (routes[state.route] || renderDashboard)();
+  const displayedRoute = view.querySelector('.view-screen.is-active')?.dataset.route || transitionState.renderedRoute;
+  const routeChanged = Boolean(displayedRoute && displayedRoute !== state.route);
+  const previousMarkup = view.querySelector('.view-screen.is-active')?.innerHTML || '';
+  const renderToken = ++transitionState.renderToken;
+
+  clearTimeout(transitionState.cleanupTimer);
+
+  if (!routeChanged || !previousMarkup || prefersReducedMotion()) {
+    view.classList.remove('is-transitioning', 'is-transition-running');
+    delete view.dataset.transitionDirection;
+    view.innerHTML = wrapViewMarkup(state.route, nextMarkup);
+    transitionState.renderedRoute = state.route;
+    bindViewEvents();
+    return;
+  }
+
+  view.dataset.transitionDirection = routeDirection(displayedRoute, state.route);
+  view.classList.add('is-transitioning');
+  view.classList.remove('is-transition-running');
+  view.innerHTML = [
+    wrapViewMarkup(state.route, nextMarkup, 'is-enter'),
+    `<div class="view-screen is-exit" data-route="${displayedRoute}" aria-hidden="true">${previousMarkup}</div>`
+  ].join('');
+  transitionState.renderedRoute = state.route;
   bindViewEvents();
+
+  requestAnimationFrame(() => {
+    if (renderToken !== transitionState.renderToken) return;
+    view.classList.add('is-transition-running');
+  });
+
+  transitionState.cleanupTimer = window.setTimeout(() => {
+    if (renderToken !== transitionState.renderToken) return;
+    view.classList.remove('is-transitioning', 'is-transition-running');
+    delete view.dataset.transitionDirection;
+    view.innerHTML = wrapViewMarkup(state.route, nextMarkup);
+  }, 520);
 }
 
 function renderDashboard() {
@@ -896,8 +956,9 @@ function renderProfile() {
   `;
 }
 
-function bindViewEvents() {
-  $$('[data-select-instrument]').forEach((button) => {
+function bindViewEvents(root = $('#view .view-screen.is-active') || $('#view')) {
+  if (!root) return;
+  $$('[data-select-instrument]', root).forEach((button) => {
     button.addEventListener('click', () => {
       state.selectedInstrumentId = button.dataset.selectInstrument;
       if (button.dataset.route) {
@@ -907,24 +968,24 @@ function bindViewEvents() {
       render();
     });
   });
-  $('#trade-side')?.addEventListener('change', (event) => { state.selectedSide = event.target.value; render(); });
-  $('#trade-amount')?.addEventListener('input', (event) => { state.selectedAmount = Number(event.target.value || 0); });
-  $('#asset-search')?.addEventListener('input', (event) => {
+  $('#trade-side', root)?.addEventListener('change', (event) => { state.selectedSide = event.target.value; render(); });
+  $('#trade-amount', root)?.addEventListener('input', (event) => { state.selectedAmount = Number(event.target.value || 0); });
+  $('#asset-search', root)?.addEventListener('input', (event) => {
     const q = event.target.value.toLowerCase();
     const filtered = state.instruments.filter((instrument) => `${instrument.symbol} ${instrument.name} ${instrument.assetClass} ${instrument.market}`.toLowerCase().includes(q));
-    $('#instrument-list').innerHTML = instrumentButtons(filtered);
-    bindViewEvents();
+    $('#instrument-list', root).innerHTML = instrumentButtons(filtered);
+    bindViewEvents(root);
   });
-  $('#confirm-trade')?.addEventListener('click', confirmTrade);
-  $('#refresh-leaderboard')?.addEventListener('click', refreshData);
-  $('#new-challenge')?.addEventListener('click', newChallenge);
-  $$('[data-play-stat]').forEach((button) => button.addEventListener('click', () => playStat(button.dataset.challengeId, button.dataset.playStat)));
-  $('#download-card')?.addEventListener('click', downloadShareCard);
-  $('#save-name')?.addEventListener('click', saveName);
-  $('#facebook-signin')?.addEventListener('click', signInWithFacebook);
-  $('#enable-push')?.addEventListener('click', enablePush);
-  $('#settle-day')?.addEventListener('click', settleDay);
-  $('#copy-group-post')?.addEventListener('click', copyGroupPost);
+  $('#confirm-trade', root)?.addEventListener('click', confirmTrade);
+  $('#refresh-leaderboard', root)?.addEventListener('click', refreshData);
+  $('#new-challenge', root)?.addEventListener('click', newChallenge);
+  $$('[data-play-stat]', root).forEach((button) => button.addEventListener('click', () => playStat(button.dataset.challengeId, button.dataset.playStat)));
+  $('#download-card', root)?.addEventListener('click', downloadShareCard);
+  $('#save-name', root)?.addEventListener('click', saveName);
+  $('#facebook-signin', root)?.addEventListener('click', signInWithFacebook);
+  $('#enable-push', root)?.addEventListener('click', enablePush);
+  $('#settle-day', root)?.addEventListener('click', settleDay);
+  $('#copy-group-post', root)?.addEventListener('click', copyGroupPost);
 }
 
 async function confirmTrade() {
