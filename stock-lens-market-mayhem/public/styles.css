@@ -237,9 +237,9 @@ button {
 .entry-stage {
   position: relative;
   z-index: 1;
-  width: min(620px, 100%);
+  width: min(590px, 100%);
   text-align: center;
-  padding: clamp(28px, 6vw, 58px);
+  padding: clamp(24px, 4.8vw, 44px);
   border: 1px solid rgba(137, 255, 240, .28);
   border-radius: 32px;
   background:
@@ -251,14 +251,14 @@ button {
 }
 
 .entry-mark {
-  width: 92px;
-  height: 92px;
+  width: 78px;
+  height: 78px;
   filter: drop-shadow(0 0 28px rgba(32, 231, 255, .5));
   animation: mark-pulse 2.6s ease-in-out infinite;
 }
 
 .entry-kicker {
-  margin: 18px 0 10px;
+  margin: 14px 0 10px;
   color: var(--cyan-2);
   font-size: .78rem;
   font-weight: 900;
@@ -268,7 +268,7 @@ button {
 
 .entry-stage h1 {
   margin: 0;
-  font-size: clamp(3.1rem, 12vw, 7.6rem);
+  font-size: clamp(2.8rem, 10vw, 6.4rem);
   line-height: .82;
   letter-spacing: -0.07em;
   text-transform: uppercase;
@@ -280,7 +280,7 @@ button {
 }
 
 .entry-copy {
-  margin: 20px auto 0;
+  margin: 16px auto 0;
   max-width: 460px;
   color: #c5d5df;
   font-size: clamp(1rem, 3vw, 1.18rem);
@@ -290,7 +290,7 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin: 24px 0;
+  margin: 20px 0;
 }
 
 .entry-stats span {
@@ -457,6 +457,7 @@ button {
 }
 
 .hero-art {
+  height: clamp(420px, calc(100dvh - 190px), 620px);
   min-height: 330px;
   position: relative;
   overflow: hidden;
@@ -918,7 +919,7 @@ button {
 
 @media (max-width: 860px) {
   .hero-panel { grid-template-columns: 1fr; }
-  .hero-art { min-height: 260px; }
+  .hero-art { height: min(62vh, 520px); min-height: 260px; }
   .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
   .tabbar {
     overflow-x: auto;
