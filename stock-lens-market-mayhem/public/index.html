@@ -42,6 +42,32 @@
   </div>
 
   <template id="app-template">
+    <section id="entry-screen" class="entry-screen" aria-label="Stock-LENS launch screen">
+      <div class="entry-bg" aria-hidden="true">
+        <div class="entry-orbit orbit-one"></div>
+        <div class="entry-orbit orbit-two"></div>
+        <div class="entry-ticker">
+          <span>AAPL +1.42%</span>
+          <span>NVDA +3.08%</span>
+          <span>FTSE -0.31%</span>
+          <span>GOLD +0.76%</span>
+          <span>OIL -1.14%</span>
+        </div>
+      </div>
+      <div class="entry-stage">
+        <img src="/assets/icon.svg" alt="" class="entry-mark" />
+        <p class="entry-kicker">Virtual market arena</p>
+        <h1>Stock-LENS<br><span>Market Mayhem</span></h1>
+        <p class="entry-copy">One trade. One day. One ridiculous leaderboard to climb.</p>
+        <div class="entry-stats" aria-label="Game rules">
+          <span><strong>$1,000</strong> bankroll</span>
+          <span><strong>1</strong> trade daily</span>
+          <span><strong>5</strong> card battles</span>
+        </div>
+        <button class="primary-button entry-button" id="enter-market">Enter the Market</button>
+      </div>
+    </section>
+
     <header class="topbar">
       <button class="brand" data-route="dashboard" aria-label="Open dashboard">
         <img src="/assets/icon.svg" alt="" />

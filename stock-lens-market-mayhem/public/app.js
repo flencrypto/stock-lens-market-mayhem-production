@@ -4,7 +4,8 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 const STORAGE_KEYS = {
   player: 'stocklens_player_v1',
   offline: 'stocklens_offline_state_v1',
-  leaderboardCache: 'stocklens_leaderboard_cache_v1'
+  leaderboardCache: 'stocklens_leaderboard_cache_v1',
+  entrySeen: 'stocklens_entry_seen_v1'
 };
 
 const LOCAL_INSTRUMENTS = [
@@ -174,7 +175,8 @@ const state = {
   selectedSide: 'BUY',
   selectedAmount: 250,
   lastRound: null,
-  deferredInstallPrompt: null
+  deferredInstallPrompt: null,
+  entryVisible: true
 };
 
 function setProgress(value, message) {
@@ -669,8 +671,19 @@ function toast(message, timeout = 3600) {
 function mountApp() {
   const template = $('#app-template');
   $('#app').innerHTML = template.innerHTML;
+  updateEntryScreen();
   bindGlobalEvents();
   render();
+}
+
+function updateEntryScreen() {
+  const shell = $('#app');
+  const entry = $('#entry-screen');
+  if (!shell || !entry) return;
+  const shouldShow = state.entryVisible;
+  shell.classList.toggle('is-entry-open', shouldShow);
+  entry.classList.toggle('is-dismissed', !shouldShow);
+  entry.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
 }
 
 function bindGlobalEvents() {
@@ -740,6 +753,13 @@ function bindGlobalEvents() {
       return;
     }
 
+    if (event.target.closest('#enter-market')) {
+      state.entryVisible = false;
+      try { sessionStorage.setItem(STORAGE_KEYS.entrySeen, '1'); } catch (_error) {}
+      updateEntryScreen();
+      return;
+    }
+
     if (event.target.closest('#share-button')) {
       shareLeagueCard();
       return;
@@ -802,6 +822,7 @@ function metricCard(label, value, note = '', className = '') {
 }
 
 function render() {
+  updateEntryScreen();
   updateTabs();
   const view = $('#view');
   if (!view) return;
@@ -1410,6 +1431,11 @@ window.addEventListener('beforeinstallprompt', (event) => {
 
 async function boot() {
   setProgress(8, 'Booting Stock-LENS...');
+  try {
+    state.entryVisible = sessionStorage.getItem(STORAGE_KEYS.entrySeen) !== '1';
+  } catch (_error) {
+    state.entryVisible = true;
+  }
   getPlayer();
   handleLaunchParams();
   await registerServiceWorker();
