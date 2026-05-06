@@ -2,6 +2,27 @@
 
 ## 1. Deploy the API/PWA server
 
+### One-click VM startup via cloud-init
+
+If your VM provider supports startup scripts, you can use:
+
+```text
+deploy/cloud-init.stocklens.yml
+```
+
+Before using it, edit these placeholders inside the file:
+
+- `REPO_URL`
+- `BRANCH`
+- `DOMAIN`
+- `EMAIL`
+
+Optional production fields:
+
+- `MARKET_PROVIDER` (`demo`, `yahoo`, or `licensed`)
+- `MARKET_DATA_BASE_URL`
+- `MARKET_DATA_API_KEY`
+
 The simplest production deployment is a Node.js host with persistent storage:
 
 ```bash

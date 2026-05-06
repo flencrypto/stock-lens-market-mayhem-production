@@ -62,6 +62,12 @@ Open in Android Studio:
 npm run native:open:android
 ```
 
+Build a debug APK from CLI:
+
+```bash
+npm run native:build:android:debug
+```
+
 Build/sign from Android Studio for Play Store or internal distribution.
 
 ## 5) iOS app
@@ -86,3 +92,9 @@ Build/sign from Xcode for TestFlight/App Store.
 - iOS builds require macOS + Xcode.
 - Android builds require Android Studio SDK setup.
 - Capacitor wrappers point to your running app URL. For offline-first packaging, migrate to a static frontend build output and set `webDir` to that build directory.
+
+For zero-budget Android+iOS release options, see:
+
+```text
+docs/FREE_MOBILE_PUBLISHING.md
+```

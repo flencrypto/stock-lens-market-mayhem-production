@@ -1,0 +1,97 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - lsb-release
+  - docker.io
+  - docker-compose-plugin
+
+write_files:
+  - path: /usr/local/bin/stocklens-bootstrap.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      APP_DIR="/opt/stock-lens-market-mayhem"
+      REPO_URL="https://github.com/your-org/stock-lens-market-mayhem.git"
+      BRANCH="main"
+
+      DOMAIN="your-subdomain.duckdns.org"
+      EMAIL="you@example.com"
+      MARKET_PROVIDER="demo"
+      QUOTE_CACHE_SECONDS="60"
+      APP_NAME="Mr.FLEN Stock-LENS"
+      STARTING_BALANCE="1000"
+      DAILY_TRADE_LIMIT="1"
+      SESSION_COOKIE_NAME="stocklens_session"
+      FACEBOOK_GROUP_URL="https://www.facebook.com/groups/your-group"
+
+      # Optional licensed provider fields
+      MARKET_DATA_BASE_URL=""
+      MARKET_DATA_API_KEY=""
+
+      mkdir -p /opt
+      if [ ! -d "$APP_DIR/.git" ]; then
+        rm -rf "$APP_DIR"
+        git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
+      else
+        git -C "$APP_DIR" fetch origin "$BRANCH"
+        git -C "$APP_DIR" checkout "$BRANCH"
+        git -C "$APP_DIR" reset --hard "origin/$BRANCH"
+      fi
+
+      cat > "$APP_DIR/.env.production" <<EOF
+      DOMAIN=$DOMAIN
+      EMAIL=$EMAIL
+      MARKET_PROVIDER=$MARKET_PROVIDER
+      QUOTE_CACHE_SECONDS=$QUOTE_CACHE_SECONDS
+      APP_NAME=$APP_NAME
+      STARTING_BALANCE=$STARTING_BALANCE
+      DAILY_TRADE_LIMIT=$DAILY_TRADE_LIMIT
+      SESSION_COOKIE_NAME=$SESSION_COOKIE_NAME
+      FACEBOOK_GROUP_URL=$FACEBOOK_GROUP_URL
+      MARKET_DATA_BASE_URL=$MARKET_DATA_BASE_URL
+      MARKET_DATA_API_KEY=$MARKET_DATA_API_KEY
+      EOF
+
+      chown -R root:root "$APP_DIR"
+
+      cd "$APP_DIR"
+      docker compose -f docker-compose.production.yml --env-file .env.production pull
+      docker compose -f docker-compose.production.yml --env-file .env.production up -d
+
+  - path: /etc/systemd/system/stocklens-compose.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Stock-LENS Docker Compose stack
+      Requires=docker.service
+      After=docker.service network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/stock-lens-market-mayhem
+      ExecStart=/usr/bin/docker compose -f docker-compose.production.yml --env-file .env.production up -d
+      ExecStop=/usr/bin/docker compose -f docker-compose.production.yml --env-file .env.production down
+      TimeoutStartSec=0
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [ systemctl, enable, --now, docker ]
+  - [ /usr/local/bin/stocklens-bootstrap.sh ]
+  - [ systemctl, daemon-reload ]
+  - [ systemctl, enable, --now, stocklens-compose.service ]
+
+final_message: "Stock-LENS cloud-init bootstrap completed. Edit /opt/stock-lens-market-mayhem/.env.production and rerun /usr/local/bin/stocklens-bootstrap.sh when needed."

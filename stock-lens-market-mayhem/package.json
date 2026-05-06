@@ -19,7 +19,8 @@
     "native:add:android": "cap add android",
     "native:add:ios": "cap add ios",
     "native:open:android": "cap open android",
-    "native:open:ios": "cap open ios"
+    "native:open:ios": "cap open ios",
+    "native:build:android:debug": "node scripts/build-android-debug.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
@@ -28,7 +29,10 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.2",
-    "electron": "^31.7.7",
+    "electron": "^41.5.0",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "tar": "^7.5.11"
   }
 }
