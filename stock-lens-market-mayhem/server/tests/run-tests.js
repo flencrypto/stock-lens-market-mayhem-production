@@ -11,10 +11,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function startServerForApiTests(port) {
+async function startServerForApiTests(port, extraEnv = {}) {
   const serverProcess = spawn(process.execPath, ['server/server.js'], {
     cwd: require('path').resolve(__dirname, '..', '..'),
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'test', MARKET_PROVIDER: 'demo' },
+    env: { ...process.env, PORT: String(port), NODE_ENV: 'test', MARKET_PROVIDER: 'demo', ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
@@ -122,12 +122,41 @@ async function testQuotesApiValidation() {
   }
 }
 
+async function testApiHardening() {
+  const port = 10650 + Math.floor(Math.random() * 800);
+  const serverProcess = await startServerForApiTests(port, { CORS_ALLOW_ORIGIN: '*' });
+  try {
+    const corsResponse = await fetch(`http://127.0.0.1:${port}/api/bootstrap`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://attacker.example' }
+    });
+    assert.equal(corsResponse.status, 204, 'CORS preflight should succeed');
+    assert.equal(corsResponse.headers.get('access-control-allow-origin'), '*', 'wildcard CORS should remain wildcard');
+    assert.equal(corsResponse.headers.has('access-control-allow-credentials'), false, 'wildcard CORS must not allow credentials');
+
+    const badJsonResponse = await fetch(`http://127.0.0.1:${port}/api/trade`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{bad json'
+    });
+    assert.equal(badJsonResponse.status, 400, 'invalid JSON should return 400');
+    const badJsonBody = await badJsonResponse.json();
+    assert.match(badJsonBody.error, /valid JSON object/, 'invalid JSON response should explain the problem');
+
+    const traversalResponse = await fetch(`http://127.0.0.1:${port}/..%2Fpackage.json`);
+    assert.equal(traversalResponse.status, 403, 'static traversal attempts should be rejected');
+  } finally {
+    await stopServerForApiTests(serverProcess);
+  }
+}
+
 async function run() {
   await testMarketData();
   await testOneTradePerDay();
   await testPortfolioMetricsAndLeaderboard();
   await testStockTrumps();
   await testQuotesApiValidation();
+  await testApiHardening();
   console.log('All Stock-LENS tests passed.');
 }
 

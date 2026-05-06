@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stocklens-market-mayhem-v2';
+const CACHE_NAME = 'stocklens-market-mayhem-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

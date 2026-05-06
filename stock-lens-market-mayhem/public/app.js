@@ -53,7 +53,8 @@ const ROUTE_SEQUENCE = ['dashboard', 'trade', 'leaderboard', 'trumps', 'profile'
 const transitionState = {
   cleanupTimer: 0,
   renderToken: 0,
-  renderedRoute: ''
+  renderedRoute: '',
+  globalEventsBound: false
 };
 
 function routeFromLocation(locationLike = window.location) {
@@ -75,6 +76,44 @@ function routeDirection(fromRoute, toRoute) {
 
 function prefersReducedMotion() {
   return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
+function parseStoredJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    console.warn(`Ignoring invalid local storage value for ${key}`, error);
+    localStorage.removeItem(key);
+    return fallback;
+  }
+}
+
+function writeStoredJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Could not save local storage value for ${key}`, error);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+function safeExternalUrl(value, fallback = 'https://www.facebook.com/groups/') {
+  try {
+    const url = new URL(String(value || ''), window.location.origin);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : fallback;
+  } catch (_error) {
+    return fallback;
+  }
 }
 
 function wrapViewMarkup(route, markup, extraClass = '', extraAttributes = '') {
@@ -186,20 +225,21 @@ function roundMoney(value) {
 }
 
 function getPlayer() {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.player) || 'null');
+  const saved = parseStoredJson(STORAGE_KEYS.player, null);
   if (saved && saved.providerUserId) return saved;
+  const randomId = window.crypto?.randomUUID?.() || Date.now().toString(36);
   const fresh = {
     provider: 'local',
-    providerUserId: `local_${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`,
+    providerUserId: `local_${randomId}`,
     displayName: `Trader ${Math.floor(Math.random() * 9000) + 1000}`,
     avatarUrl: ''
   };
-  localStorage.setItem(STORAGE_KEYS.player, JSON.stringify(fresh));
+  writeStoredJson(STORAGE_KEYS.player, fresh);
   return fresh;
 }
 
 function savePlayer(player) {
-  localStorage.setItem(STORAGE_KEYS.player, JSON.stringify(player));
+  writeStoredJson(STORAGE_KEYS.player, player);
 }
 
 function isAuthenticatedFacebookPlayer(player = getPlayer()) {
@@ -207,17 +247,17 @@ function isAuthenticatedFacebookPlayer(player = getPlayer()) {
 }
 
 function readLeaderboardCache() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEYS.leaderboardCache) || 'null');
+  return parseStoredJson(STORAGE_KEYS.leaderboardCache, null);
 }
 
 function writeLeaderboardCache(player, leaderboard, challengeLeaderboard) {
   if (!isAuthenticatedFacebookPlayer(player)) return;
-  localStorage.setItem(STORAGE_KEYS.leaderboardCache, JSON.stringify({
+  writeStoredJson(STORAGE_KEYS.leaderboardCache, {
     playerId: player.providerUserId,
     leaderboard: leaderboard || [],
     challengeLeaderboard: challengeLeaderboard || [],
     cachedAt: new Date().toISOString()
-  }));
+  });
 }
 
 function applyCachedLeaderboard(player = getPlayer()) {
@@ -294,7 +334,12 @@ function loadFacebookSdk(appId) {
 
     window.fbAsyncInit = finishInit;
 
-    if (document.getElementById('facebook-jssdk')) return;
+    const existingScript = document.getElementById('facebook-jssdk');
+    if (existingScript) {
+      existingScript.addEventListener('load', finishInit, { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Facebook SDK failed to load')), { once: true });
+      return;
+    }
 
     const script = document.createElement('script');
     script.id = 'facebook-jssdk';
@@ -447,12 +492,12 @@ function initialOfflineState() {
 }
 
 function loadOffline() {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.offline) || 'null');
+  const saved = parseStoredJson(STORAGE_KEYS.offline, null);
   return saved || initialOfflineState();
 }
 
 function saveOffline(data) {
-  localStorage.setItem(STORAGE_KEYS.offline, JSON.stringify(data));
+  writeStoredJson(STORAGE_KEYS.offline, data);
 }
 
 function offlinePortfolio(data = loadOffline()) {
@@ -609,25 +654,122 @@ function mountApp() {
 }
 
 function bindGlobalEvents() {
+  if (transitionState.globalEventsBound) return;
+  transitionState.globalEventsBound = true;
+
   document.addEventListener('click', async (event) => {
+    const selectButton = event.target.closest('[data-select-instrument]');
+    if (selectButton) {
+      state.selectedInstrumentId = selectButton.dataset.selectInstrument;
+      if (selectButton.dataset.route) {
+        state.route = selectButton.dataset.route;
+        syncRouteToLocation();
+      }
+      render();
+      return;
+    }
+
+    if (event.target.closest('#confirm-trade')) {
+      confirmTrade();
+      return;
+    }
+
+    if (event.target.closest('#refresh-leaderboard')) {
+      refreshData();
+      return;
+    }
+
+    if (event.target.closest('#new-challenge')) {
+      newChallenge();
+      return;
+    }
+
+    const playStatButton = event.target.closest('[data-play-stat]');
+    if (playStatButton) {
+      playStat(playStatButton.dataset.challengeId, playStatButton.dataset.playStat);
+      return;
+    }
+
+    if (event.target.closest('#download-card')) {
+      downloadShareCard();
+      return;
+    }
+
+    if (event.target.closest('#save-name')) {
+      saveName();
+      return;
+    }
+
+    if (event.target.closest('#facebook-signin')) {
+      signInWithFacebook();
+      return;
+    }
+
+    if (event.target.closest('#enable-push')) {
+      enablePush();
+      return;
+    }
+
+    if (event.target.closest('#settle-day')) {
+      settleDay();
+      return;
+    }
+
+    if (event.target.closest('#copy-group-post')) {
+      copyGroupPost();
+      return;
+    }
+
+    if (event.target.closest('#share-button')) {
+      shareLeagueCard();
+      return;
+    }
+
+    if (event.target.closest('#install-button')) {
+      if (!state.deferredInstallPrompt) return;
+      state.deferredInstallPrompt.prompt();
+      state.deferredInstallPrompt.userChoice.then(() => {
+        state.deferredInstallPrompt = null;
+        const installButton = $('#install-button');
+        if (installButton) installButton.hidden = true;
+      });
+      return;
+    }
+
     const routeButton = event.target.closest('[data-route]');
     if (routeButton) {
       state.route = routeButton.dataset.route;
       syncRouteToLocation();
       render();
+      return;
     }
   });
+
+  document.addEventListener('input', (event) => {
+    if (event.target.matches('#trade-amount')) {
+      state.selectedAmount = Number(event.target.value || 0);
+      return;
+    }
+
+    if (event.target.matches('#asset-search')) {
+      const list = $('#instrument-list');
+      if (!list) return;
+      const q = event.target.value.toLowerCase();
+      const filtered = state.instruments.filter((instrument) => `${instrument.symbol} ${instrument.name} ${instrument.assetClass} ${instrument.market}`.toLowerCase().includes(q));
+      list.innerHTML = instrumentButtons(filtered);
+    }
+  });
+
+  document.addEventListener('change', (event) => {
+    if (event.target.matches('#trade-side')) {
+      state.selectedSide = event.target.value;
+      render();
+    }
+  });
+
   window.addEventListener('popstate', () => {
     state.route = routeFromLocation();
     render();
-  });
-  $('#share-button')?.addEventListener('click', shareLeagueCard);
-  $('#install-button')?.addEventListener('click', async () => {
-    if (!state.deferredInstallPrompt) return;
-    state.deferredInstallPrompt.prompt();
-    await state.deferredInstallPrompt.userChoice;
-    state.deferredInstallPrompt = null;
-    $('#install-button').hidden = true;
   });
 }
 
@@ -686,7 +828,9 @@ function render() {
     if (renderToken !== transitionState.renderToken) return;
     view.classList.remove('is-transitioning', 'is-transition-running');
     delete view.dataset.transitionDirection;
-    view.innerHTML = wrapViewMarkup(state.route, nextMarkup);
+    transitionState.renderedRoute = '';
+    render();
+    bindViewEvents();
   }, 520);
 }
 
@@ -720,7 +864,7 @@ function renderDashboard() {
             </button>
           `).join('')}
         </div>
-        <p class="disclaimer">${state.config.disclaimer}</p>
+        <p class="disclaimer">${escapeHtml(state.config.disclaimer)}</p>
       </article>
 
       <article class="table-card">
@@ -830,7 +974,7 @@ function leaderboardTable(rows, compact = false) {
   return `<div class="table-wrap"><table class="table"><thead><tr><th>Rank</th><th>Player</th><th>Value</th><th>%</th>${compact ? '' : '<th>$</th><th>Days</th><th>W/L</th><th>Best</th><th>Worst</th>'}</tr></thead><tbody>
     ${rows.map((row) => `<tr>
       <td><span class="rank-pill">#${row.rank}</span></td>
-      <td>${row.displayName}${row.userId === state.user?.id ? ' <span class="yellow">YOU</span>' : ''}</td>
+      <td>${escapeHtml(row.displayName)}${row.userId === state.user?.id ? ' <span class="yellow">YOU</span>' : ''}</td>
       <td>${currency(row.portfolioValue)}</td>
       <td class="${clsFor(row.pnlPercent)}">${percent(row.pnlPercent)}</td>
       ${compact ? '' : `<td class="${clsFor(row.pnl)}">${currency(row.pnl)}</td><td>${row.daysTraded}</td><td>${row.daysGained}/${row.daysLost}</td><td class="positive">${currency(row.biggestGain)}</td><td class="negative">${currency(row.biggestLoss)}</td>`}
@@ -861,7 +1005,7 @@ function challengeLeaderboardTable() {
   const rows = state.challengeLeaderboard || [];
   if (!rows.length) return '<p class="muted">No Stock-TRUMPS battles completed yet.</p>';
   return `<div class="table-wrap"><table class="table"><thead><tr><th>Rank</th><th>Player</th><th>Played</th><th>Wins</th><th>Losses</th><th>Points</th></tr></thead><tbody>
-    ${rows.map((row) => `<tr><td><span class="rank-pill">#${row.rank}</span></td><td>${row.userId === state.user?.id ? state.user.displayName : row.userId}</td><td>${row.played}</td><td class="positive">${row.wins}</td><td class="negative">${row.losses}</td><td>${row.points}</td></tr>`).join('')}
+    ${rows.map((row) => `<tr><td><span class="rank-pill">#${row.rank}</span></td><td>${escapeHtml(row.userId === state.user?.id ? state.user.displayName : row.userId)}</td><td>${row.played}</td><td class="positive">${row.wins}</td><td class="negative">${row.losses}</td><td>${row.points}</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 
@@ -922,6 +1066,8 @@ function renderLastRound(round) {
 
 function renderProfile() {
   const p = state.portfolio;
+  const displayName = escapeHtml(state.user?.displayName || 'Trader');
+  const facebookGroupUrl = escapeHtml(safeExternalUrl(state.config.facebookGroupUrl));
   return `
     <section class="grid cols-3">
       ${metricCard('Days Traded', p.stats.daysTraded, 'Daily discipline score')}
@@ -934,10 +1080,10 @@ function renderProfile() {
 
     <section class="grid cols-2" style="margin-top:14px;">
       <article class="profile-card">
-        <div class="panel-header"><div><h2>Player Profile</h2><p>${state.user?.displayName || 'Trader'}</p></div><span class="status-pill ${state.fb.available ? 'green' : 'yellow'}">${state.fb.available ? 'Facebook' : 'PWA'}</span></div>
+        <div class="panel-header"><div><h2>Player Profile</h2><p>${displayName}</p></div><span class="status-pill ${state.fb.available ? 'green' : 'yellow'}">${state.fb.available ? 'Facebook' : 'PWA'}</span></div>
         <div class="form-row">
           <label for="display-name">Display name</label>
-          <input class="input" id="display-name" value="${state.user?.displayName || ''}" />
+          <input class="input" id="display-name" value="${escapeHtml(state.user?.displayName || '')}" />
         </div>
         <button class="primary-button" id="save-name">Save name</button>
         ${!state.fb.available && state.config.facebookAppId ? '<button class="secondary-button" id="facebook-signin" style="margin-top:10px;">Sign in with Facebook</button>' : ''}
@@ -947,7 +1093,7 @@ function renderProfile() {
       </article>
       <article class="panel">
         <div class="panel-header"><div><h2>Facebook Group Link</h2><p>Keep the banter and weekly leaderboard drops in the group.</p></div></div>
-        <a class="primary-button" href="${state.config.facebookGroupUrl}" target="_blank" rel="noopener" style="display:inline-flex;text-decoration:none;">Open Facebook Group</a>
+        <a class="primary-button" href="${facebookGroupUrl}" target="_blank" rel="noopener" style="display:inline-flex;text-decoration:none;">Open Facebook Group</a>
         <button class="ghost-button" id="copy-group-post" style="margin-top:10px;">Copy weekly post text</button>
         <p class="disclaimer">The app links to your group as a community hub. It does not scrape, auto-read, or auto-post group content.</p>
       </article>
@@ -957,34 +1103,6 @@ function renderProfile() {
 
 function bindViewEvents(root = $('#view .view-screen.is-active') || $('#view')) {
   if (!root) return;
-  $$('[data-select-instrument]', root).forEach((button) => {
-    button.addEventListener('click', () => {
-      state.selectedInstrumentId = button.dataset.selectInstrument;
-      if (button.dataset.route) {
-        state.route = button.dataset.route;
-        syncRouteToLocation();
-      }
-      render();
-    });
-  });
-  $('#trade-side', root)?.addEventListener('change', (event) => { state.selectedSide = event.target.value; render(); });
-  $('#trade-amount', root)?.addEventListener('input', (event) => { state.selectedAmount = Number(event.target.value || 0); });
-  $('#asset-search', root)?.addEventListener('input', (event) => {
-    const q = event.target.value.toLowerCase();
-    const filtered = state.instruments.filter((instrument) => `${instrument.symbol} ${instrument.name} ${instrument.assetClass} ${instrument.market}`.toLowerCase().includes(q));
-    $('#instrument-list', root).innerHTML = instrumentButtons(filtered);
-    bindViewEvents(root);
-  });
-  $('#confirm-trade', root)?.addEventListener('click', confirmTrade);
-  $('#refresh-leaderboard', root)?.addEventListener('click', refreshData);
-  $('#new-challenge', root)?.addEventListener('click', newChallenge);
-  $$('[data-play-stat]', root).forEach((button) => button.addEventListener('click', () => playStat(button.dataset.challengeId, button.dataset.playStat)));
-  $('#download-card', root)?.addEventListener('click', downloadShareCard);
-  $('#save-name', root)?.addEventListener('click', saveName);
-  $('#facebook-signin', root)?.addEventListener('click', signInWithFacebook);
-  $('#enable-push', root)?.addEventListener('click', enablePush);
-  $('#settle-day', root)?.addEventListener('click', settleDay);
-  $('#copy-group-post', root)?.addEventListener('click', copyGroupPost);
 }
 
 async function confirmTrade() {

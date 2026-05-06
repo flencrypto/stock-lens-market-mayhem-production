@@ -40,15 +40,21 @@ function json(res, statusCode, body, headers = {}) {
 }
 
 function corsHeaders(req) {
-  const origin = req.headers.origin || '*';
-  const allowOrigin = config.corsAllowOrigin === '*' ? origin : config.corsAllowOrigin;
-  return {
+  const requestOrigin = req.headers.origin || '';
+  const allowedOrigins = String(config.corsAllowOrigin || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowsAnyOrigin = allowedOrigins.includes('*') || allowedOrigins.length === 0;
+  const allowOrigin = allowsAnyOrigin ? '*' : (requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0]);
+  const headers = {
     'access-control-allow-origin': allowOrigin,
     'access-control-allow-headers': 'content-type, x-player-id, x-player-name, x-player-avatar, x-player-provider',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-credentials': 'true',
     'vary': 'Origin'
   };
+  if (allowOrigin !== '*') headers['access-control-allow-credentials'] = 'true';
+  return headers;
 }
 
 function parseBody(req) {
@@ -61,7 +67,20 @@ function parseBody(req) {
         req.destroy();
       }
     });
-    req.on('end', () => resolve(raw ? safeJsonParse(raw, {}) : {}));
+    req.on('end', () => {
+      if (!raw) {
+        resolve({});
+        return;
+      }
+      const body = safeJsonParse(raw, null);
+      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        const error = new Error('Request body must be a valid JSON object');
+        error.statusCode = 400;
+        reject(error);
+        return;
+      }
+      resolve(body);
+    });
     req.on('error', reject);
   });
 }
@@ -253,7 +272,8 @@ function safeStaticPath(pathname) {
   }
   if (requestPath === '/') requestPath = '/index.html';
   const finalPath = path.normalize(path.join(config.publicDir, requestPath));
-  if (!finalPath.startsWith(config.publicDir)) return null;
+  const relativePath = path.relative(config.publicDir, finalPath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) return null;
   return finalPath;
 }
 
