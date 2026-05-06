@@ -1,0 +1,13 @@
+{
+  "name": "stock-lens-market-mayhem-production",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "build": "npm --prefix stock-lens-market-mayhem run build:instant",
+    "test": "npm --prefix stock-lens-market-mayhem test"
+  }
+}

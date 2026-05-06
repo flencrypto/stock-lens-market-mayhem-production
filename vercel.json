@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:instant",
-  "public": true,
+  "buildCommand": "npm run build",
   "functions": {
     "api/index.js": {
+      "includeFiles": "stock-lens-market-mayhem/public/**",
       "maxDuration": 60
     }
   },

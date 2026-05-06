@@ -1,8 +1,12 @@
 'use strict';
 
 const path = require('path');
+const os = require('os');
 
 const rootDir = path.resolve(__dirname, '..', '..');
+const defaultDataFile = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'stocklens-data.json')
+  : path.join(rootDir, 'data', 'stocklens-data.json');
 
 function numberFromEnv(name, fallback) {
   const raw = process.env[name];
@@ -14,7 +18,7 @@ function numberFromEnv(name, fallback) {
 const config = {
   rootDir,
   publicDir: path.join(rootDir, 'public'),
-  dataFile: path.join(rootDir, 'data', 'stocklens-data.json'),
+  dataFile: process.env.DATA_FILE || defaultDataFile,
   port: numberFromEnv('PORT', 8787),
   env: process.env.NODE_ENV || 'development',
   appName: process.env.APP_NAME || 'Mr.FLEN Stock-LENS',
