@@ -1,7 +1,9 @@
 node_modules/
 data/*.json
 !.gitkeep
-.env
+.env*
+!.env.example
+!.env.production.example
 .DS_Store
 dist/*.zip
 *.log
