@@ -615,7 +615,6 @@ function bindGlobalEvents() {
       state.route = routeButton.dataset.route;
       syncRouteToLocation();
       render();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   });
   window.addEventListener('popstate', () => {

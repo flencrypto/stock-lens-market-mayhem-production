@@ -77,11 +77,14 @@ if (androidSdkHome) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const invocation = process.platform === 'win32'
+    ? { command: 'cmd.exe', args: ['/d', '/s', '/c', command, ...args] }
+    : { command, args };
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd: rootDir,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
     env: process.env,
+    shell: false,
     ...options
   });
   if (result.status !== 0) {
@@ -108,11 +111,14 @@ run('npx', ['cap', 'sync', 'android']);
 
 const gradleCmd = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
 const gradleCwd = androidDir;
-const result = spawnSync(gradleCmd, ['assembleDebug'], {
+const gradleInvocation = process.platform === 'win32'
+  ? { command: 'cmd.exe', args: ['/d', '/s', '/c', gradleCmd, 'assembleDebug'] }
+  : { command: gradleCmd, args: ['assembleDebug'] };
+const result = spawnSync(gradleInvocation.command, gradleInvocation.args, {
   cwd: gradleCwd,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
-  env: process.env
+  env: process.env,
+  shell: false
 });
 
 if (result.status !== 0) {
