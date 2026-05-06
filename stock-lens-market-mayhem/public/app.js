@@ -363,12 +363,18 @@ function loadFacebookSdk(appId) {
 }
 
 function getFacebookLoginStatus() {
+  if (!window.FB || typeof window.FB.getLoginStatus !== 'function') {
+    return Promise.reject(new Error('Facebook SDK is not ready'));
+  }
   return new Promise((resolve) => {
     window.FB.getLoginStatus((response) => resolve(response));
   });
 }
 
 function getFacebookProfile() {
+  if (!window.FB || typeof window.FB.api !== 'function') {
+    return Promise.reject(new Error('Facebook SDK is not ready'));
+  }
   return new Promise((resolve, reject) => {
     window.FB.api('/me', { fields: 'id,name,picture.width(128).height(128)' }, (response) => {
       if (!response || response.error) {
@@ -402,10 +408,10 @@ async function syncFacebookWebPlayer() {
 async function initFacebookWebLogin() {
   if (state.fb.available || !state.config.facebookAppId) return false;
   try {
-    await loadFacebookSdk(state.config.facebookAppId);
-    const status = await getFacebookLoginStatus();
+    await withTimeout(loadFacebookSdk(state.config.facebookAppId), 5000, 'Facebook SDK load timed out');
+    const status = await withTimeout(getFacebookLoginStatus(), 3000, 'Facebook login status timed out');
     if (status.status !== 'connected') return false;
-    await syncFacebookWebPlayer();
+    await withTimeout(syncFacebookWebPlayer(), 5000, 'Facebook profile sync timed out');
     return true;
   } catch (error) {
     console.warn('Facebook web login init failed', error);
@@ -420,16 +426,19 @@ async function signInWithFacebook() {
   }
 
   try {
-    await loadFacebookSdk(state.config.facebookAppId);
-    const response = await new Promise((resolve) => {
+    await withTimeout(loadFacebookSdk(state.config.facebookAppId), 5000, 'Facebook SDK load timed out');
+    if (!window.FB || typeof window.FB.login !== 'function') {
+      throw new Error('Facebook SDK is not ready');
+    }
+    const response = await withTimeout(new Promise((resolve) => {
       window.FB.login((loginResponse) => resolve(loginResponse), { scope: 'public_profile' });
-    });
+    }), 20000, 'Facebook sign-in timed out');
 
     if (!response || !response.authResponse) {
       throw new Error('Facebook sign-in was cancelled.');
     }
 
-    await syncFacebookWebPlayer();
+    await withTimeout(syncFacebookWebPlayer(), 5000, 'Facebook profile sync timed out');
     await loadAppData();
     render();
     toast('Signed in with Facebook.');
