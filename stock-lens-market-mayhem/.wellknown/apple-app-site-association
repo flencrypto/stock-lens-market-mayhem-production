@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "com.mrflen.stocklens",
+        "paths": ["/", "/trade", "/leaderboard", "/trumps", "/profile"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["com.mrflen.stocklens"]
+  }
+}

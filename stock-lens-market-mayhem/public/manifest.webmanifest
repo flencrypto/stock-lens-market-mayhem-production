@@ -8,7 +8,53 @@
   "background_color": "#050b14",
   "theme_color": "#00e5ff",
   "orientation": "portrait-primary",
+  "categories": ["games", "finance"],
+  "screenshots": [
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/assets/stock-lens-branding.jpeg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ],
   "icons": [
-    { "src": "/assets/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
-  ]
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Trade",
+      "short_name": "Trade",
+      "description": "Make your daily trade",
+      "url": "/trade",
+      "icons": [{ "src": "/assets/icon.svg", "sizes": "512x512", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Leaderboard",
+      "short_name": "Board",
+      "description": "Check the league standings",
+      "url": "/leaderboard",
+      "icons": [{ "src": "/assets/icon.svg", "sizes": "512x512", "type": "image/svg+xml" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build:instant",
+  "public": true,
+  "env": [
+    "PORT",
+    "NODE_ENV",
+    "PUBLIC_BASE_URL",
+    "MARKET_PROVIDER",
+    "QUOTE_CACHE_SECONDS",
+    "APP_NAME",
+    "STARTING_BALANCE",
+    "DAILY_TRADE_LIMIT",
+    "FACEBOOK_GROUP_URL",
+    "SESSION_COOKIE_NAME",
+    "CORS_ALLOW_ORIGIN"
+  ],
+  "functions": {
+    "server/server.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/server/server.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
