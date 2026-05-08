@@ -151,8 +151,8 @@ curl -i -X POST \
 
 Token namespace mapping:
 
-- `GG...` token prefix -> `gg_graph_api`
-- `EAA...` token prefix -> `fb_game_bundle` (includes System User tokens)
+- `GG...` token prefix (Gaming-domain access tokens) -> `gg_graph_api`
+- `EAA...` token prefix (Facebook-domain user/system tokens) -> `fb_game_bundle`
 
 ```bash
 curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session-id}" \
@@ -185,6 +185,7 @@ curl -i -X POST "https://api.facebook.com/instant-games/assets/{app-id}/push-to-
 Note: this push-to-production call uses `api.facebook.com` (not the Step 2 `rupload.facebook.com` binary-upload host), while session creation uses `graph.facebook.com`.
 Use the `bundle-instance-id` returned in the Step 2 upload response payload.
 The authorization value here is intentionally an app access token in `{app-id}|{app-access-token}` format.
+This `api.facebook.com` endpoint is the one documented in current Meta Instant Games bundle-upload docs; re-check Meta docs if they publish an updated endpoint.
 
 ### Security and operations notes
 
