@@ -143,7 +143,8 @@ Use this for CI/CD pipelines.
 
 ```bash
 curl -i -X POST \
-  "https://graph.facebook.com/v24.0/{app-id}/uploads?file_name={file-name}&file_length={file-length-in-bytes}&file_type=application/zip&access_token={user-access-token}"
+  "https://graph.facebook.com/v24.0/{app-id}/uploads?file_name={file-name}&file_length={file-length-in-bytes}&file_type=application/zip" \
+  -H "Authorization: Bearer {user-access-token}"
 ```
 
 #### Step 2: upload ZIP binary
@@ -167,7 +168,8 @@ curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session
 
 Notes:
 
-- `Type: BUNDLE` is the required upload classification header for this rupload endpoint.
+- Replace `{upload-namespace}` with `gg_graph_api` (GG tokens) or `fb_game_bundle` (EAA tokens).
+- `Type: BUNDLE` is a Facebook-specific required classification header for this rupload endpoint.
 - Keep `content-length` and `X-Entity-Length` equal to the ZIP byte size.
 
 #### Step 3 (optional): push uploaded bundle to production
