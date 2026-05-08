@@ -160,6 +160,7 @@ curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session
   -H "Offset: 0" \
   -H "X-Entity-Length: {file-length-in-bytes}" \
   -H "Content-Length: {file-length-in-bytes}" \
+  # Required Facebook bundle classification header
   -H "Type: BUNDLE" \
   -H "comment: Optional bundle upload comment" \
   -H "name: {file-name}" \
