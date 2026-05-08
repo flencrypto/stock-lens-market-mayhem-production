@@ -159,7 +159,7 @@ curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session
   -H "Offset: 0" \
   -H "X-Entity-Length: {file-length-in-bytes}" \
   -H "Content-Length: {file-length-in-bytes}" \
-  -H "type: BUNDLE" \
+  -H "Type: BUNDLE" \
   -H "comment: Optional bundle upload comment" \
   -H "name: {file-name}" \
   --data-binary @./{file-name}
@@ -167,7 +167,7 @@ curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session
 
 Notes:
 
-- `type: BUNDLE` is the required upload classification header for this rupload endpoint.
+- `Type: BUNDLE` is the required upload classification header for this rupload endpoint.
 - Keep `content-length` and `X-Entity-Length` equal to the ZIP byte size.
 
 #### Step 3 (optional): push uploaded bundle to production
@@ -182,6 +182,7 @@ curl -i -X POST "https://api.facebook.com/instant-games/assets/{app-id}/push-to-
 
 Note: this push-to-production call uses the `api.facebook.com` endpoint as documented for the Instant Games assets API, while session creation uses `graph.facebook.com`.
 Use the `bundle-instance-id` returned in the Step 2 upload response payload.
+The authorization value here is intentionally an app access token in `{app-id}|{app-access-token}` format.
 
 ### Security and operations notes
 
