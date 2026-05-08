@@ -181,6 +181,7 @@ curl -i -X POST "https://api.facebook.com/instant-games/assets/{app-id}/push-to-
 ```
 
 Note: this push-to-production call uses the `api.facebook.com` endpoint as documented for the Instant Games assets API, while session creation uses `graph.facebook.com`.
+Use the `bundle-instance-id` returned in the Step 2 upload response payload.
 
 ### Security and operations notes
 
