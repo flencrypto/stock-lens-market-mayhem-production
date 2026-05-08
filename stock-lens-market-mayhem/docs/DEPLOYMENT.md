@@ -158,7 +158,7 @@ curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session
   -H "Authorization: OAuth {access-token}" \
   -H "Offset: 0" \
   -H "X-Entity-Length: {file-length-in-bytes}" \
-  -H "content-length: {file-length-in-bytes}" \
+  -H "Content-Length: {file-length-in-bytes}" \
   -H "type: BUNDLE" \
   -H "comment: Optional bundle upload comment" \
   -H "name: {file-name}" \
