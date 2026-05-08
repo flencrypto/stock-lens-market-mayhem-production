@@ -91,19 +91,96 @@ db/schema.sql
 
 Then replace `server/src/dataStore.js` with a Postgres repository layer.
 
-## 3. Build and upload Facebook Instant Games bundle
+## 3. Facebook Instant Games deployment
+
+### Build bundle
 
 ```bash
 npm run build:instant
 ```
 
-Upload:
+Generated file:
 
 ```text
 dist/stock-lens-instant-game-upload.zip
 ```
 
-The ZIP places `index.html` and `fbapp-config.json` at the root, as expected for an Instant Games web-hosted bundle.
+### Bundle structure requirements
+
+The Instant Games upload bundle is a ZIP with client assets at the ZIP root.
+
+Required root files:
+
+- `index.html` (entry point)
+- `fbapp-config.json` (Instant Games config)
+
+Typical structure:
+
+```text
+stock-lens-instant-game-upload.zip
+|-- index.html
+|-- fbapp-config.json
+|-- app.js
+|-- styles.css
+|-- assets/
+```
+
+The existing `build:instant` script zips `public/` file contents directly, so `index.html` and `fbapp-config.json` stay at ZIP root.
+
+### Upload method A: App Dashboard (manual)
+
+1. Open your app in Meta App Dashboard.
+2. Go to **Instant Games > Web Hosting** (or **Bundle Upload**).
+3. Click **Upload Bundle** / **Upload Version**.
+4. Upload `dist/stock-lens-instant-game-upload.zip`.
+5. Wait for processing, then stage for testing or push to production.
+
+### Upload method B: Graph API (programmatic)
+
+Use this for CI/CD pipelines.
+
+#### Step 1: request upload session ID
+
+```bash
+curl -i -X POST \
+  "https://graph.facebook.com/v24.0/{app-id}/uploads?file_name={file-name}&file_length={file-length-in-bytes}&file_type=application/zip&access_token={user-access-token}"
+```
+
+#### Step 2: upload ZIP binary
+
+Token namespace mapping:
+
+- `GG...` token prefix -> `gg_graph_api`
+- `EAA...` token prefix -> `fb_game_bundle` (includes System User tokens)
+
+```bash
+curl -i -X POST "https://rupload.facebook.com/{upload-namespace}/upload:{session-id}" \
+  -H "Authorization: OAuth {access-token}" \
+  -H "Offset: 0" \
+  -H "X-Entity-Length: {file-length-in-bytes}" \
+  -H "content-length: {file-length-in-bytes}" \
+  -H "type: BUNDLE" \
+  -H "comment: Optional bundle upload comment" \
+  -H "name: {file-name}" \
+  --data-binary @./{file-name}
+```
+
+#### Step 3 (optional): push uploaded bundle to production
+
+```bash
+curl -i -X POST "https://api.facebook.com/instant-games/assets/{app-id}/push-to-production" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: OAuth {app-id}|{app-access-token}" \
+  -H "X-API-Version: 1.0.0" \
+  -d '{"bundle_instance_id": "{bundle-instance-id}"}'
+```
+
+### Security and operations notes
+
+- Never commit access tokens; use secret manager or CI/CD environment variables.
+- For CI/CD, prefer a System User token (`EAA...`) because it does not expire.
+- Max bundle size is 200 MB; recommended initial load is under 5 MB.
+- If upload fails with authorization errors, verify token prefix and upload namespace match.
 
 ## 4. App review essentials
 
